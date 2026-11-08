@@ -1,9 +1,9 @@
 /* SpotGlass 1.0.1 — ogressar. Spotify-inspired styling for Yandex Music. */
-(() => {
+export function startInterface(bridge) {
   'use strict';
-  window.__spotGlass?.destroy();
+
   const root = document.documentElement;
-  const sourceScript = document.currentScript;
+  const sourceScript = null;
   const defaults = { enabled:true, wide:true, panel:true, compact:false, green:true, waveTile:true, hideAds:true, lrclib:true };
   let options = { ...defaults }, store, unsubscribe, timer, observer;
   const startupAt=Date.now();let libraryStartTimer,trackChangedAt=0;
@@ -61,7 +61,7 @@
   function bindSettings() {
     if(store) return;
     try {
-      const candidate=window.pulsesyncApi?.getSettings?.('SpotGlass');
+      const candidate=bridge?.getSettings?.('SpotGlass');
       if(candidate?.getCurrent) {
         receiveSettings(candidate.getCurrent());store=candidate;
         unsubscribe=store.onChange?.(next=>{if(!dead)receiveSettings(next);});
@@ -88,7 +88,7 @@
   function safeCover(track) {return coverUrl(track.coverUri,800)||nativeCover();}
   function updateTrack() {
     if(!panel||!options.enabled||!options.panel||panelDismissed||window.innerWidth<1280) return;
-    const track=window.pulsesyncApi?.getCurrentTrack?.();
+    const track=bridge?.getCurrentTrack?.();
     if(!track||typeof track!=='object'||typeof track.then==='function') return;
     const data={id:String(track.id??''),title:String(track.title||'Без названия'),artist:Array.isArray(track.artists)?track.artists.map(x=>String(x.name||'')).filter(Boolean).join(', '):'',album:String(track.albums?.[0]?.title||'Сингл'),cover:String(track.coverUri||'')};
     const key=JSON.stringify(data);
@@ -118,7 +118,7 @@
     if(previousAccent[0])root.style.setProperty('--sg-accent',...previousAccent);else root.style.removeProperty('--sg-accent');
     for(const [k,v] of previousScale){if(v[0])root.style.setProperty(k,...v);else root.style.removeProperty(k);}
     window.removeEventListener('pagehide',destroy);
-    if(window.__spotGlass?.destroy===destroy)delete window.__spotGlass;
+
   }
   let lyricsBody, lyricsExpand, lyricsDialog, lyricsAbort, lyricsTrack='', lyricsText='', lyricsState='', nativeLyricsRequested='', nextCard, nextKey='', sidePlay, sidePrev, sideNext;
   function nativeActionButton(kind) {
@@ -128,7 +128,7 @@
     return footer.querySelector('button[data-sg-glyph="'+kind+'"]');
   }
   function playerAction(kind) {
-    const api=window.pulsesyncApi;const method=({play:'togglePlayPause',next:'next',previous:'previous'})[kind];
+    const api=bridge;const method=({play:'togglePlayPause',next:'next',previous:'previous'})[kind];
     if(method&&typeof api?.[method]==='function'){try{Promise.resolve(api[method]()).catch(()=>{});}catch{}return;}
     const native=nativeActionButton(kind);if(native&&!native.disabled)native.click();
   }
@@ -194,7 +194,7 @@
   function syncLyrics() {
     clearTimeout(syncTimer);syncTimer=null;if(dead)return;
     if(options.enabled&&!document.hidden&&options.panel&&!panelDismissed&&innerWidth>=1280&&cues.length){
-      const api=window.pulsesyncApi;
+      const api=bridge;
       if(String(api?.getCurrentTrack?.()?.id??'')===lyricsTrack){
         const progress=api?.getProgress?.();const position=Number(typeof progress==='number'?progress:progress?.position);
         if(Number.isFinite(position)){
@@ -213,7 +213,7 @@
   }
   function resumeLyrics(){if(!dead&&!document.hidden){scheduleTrackUpdate();if(cues.length)syncLyrics();}}
   function bindLive(){
-    const api=window.pulsesyncApi;
+    const api=bridge;
     if(!trackOff&&typeof api?.onCurrentTrackChange==='function')trackOff=api.onCurrentTrackChange(scheduleTrackUpdate);
     if(!queueOff&&typeof api?.onQueueChange==='function')queueOff=api.onQueueChange(scheduleTrackUpdate);
   }
@@ -230,7 +230,7 @@
     const controller=new AbortController();const abort=()=>controller.abort();signal.addEventListener('abort',abort,{once:true});
     const timeout=setTimeout(abort,8000);lrclibAfter=Date.now()+300;
     try{
-      const response=await fetch('https://lrclib.net/api/get?'+key,{signal:controller.signal,credentials:'omit',headers:{'Lrclib-Client':'SpotGlass/1.0.1 (ogressar)'}});
+      const response=await bridge.fetch('https://lrclib.net/api/get?'+key,{signal:controller.signal,credentials:'omit',headers:{'Lrclib-Client':'SpotGlass/1.0.1 (ogressar)'}});
       if(response.status===429||response.status===503){const retry=response.headers.get('Retry-After');const seconds=Number(retry);lrclibAfter=Math.max(Date.now()+60000,Number.isFinite(seconds)?Date.now()+seconds*1000:Date.parse(retry)||0);return null;}
       if(!response.ok&&response.status!==404)throw new Error('Lyrics request failed');
       const data=response.ok?await response.json():null;
@@ -243,7 +243,7 @@
     }finally{clearTimeout(timeout);signal.removeEventListener('abort',abort);}
   }
   async function loadTrackLyrics(track,id,signal){
-    const api=window.pulsesyncApi;
+    const api=bridge;
     if(typeof api?.getNativeLyrics==='function'&&/^[0-9]{1,16}(?::[0-9]{1,16})?$/.test(id)){
       for(const type of ['LRC','TEXT']){
         try{const raw=await api.getNativeLyrics(id,type,signal);if(signal.aborted)return null;if(usableLyrics(raw))return {raw,source:'Яндекс Музыка'};}catch(e){if(signal.aborted)return null;}
@@ -252,7 +252,7 @@
     return externalLyrics(track,signal);
   }
   function updateExtras(track) {
-    const api=window.pulsesyncApi;const id=String(track.id??'');
+    const api=bridge;const id=String(track.id??'');
     lyricsColor(track);
     if(id!==lyricsTrack){trackChangedAt=Date.now();lyricsTrack=id;nativeLyricsRequested='';lyricsAbort?.abort();lyricsAbort=new AbortController();lyricsText='';cues=[];activeCue=-2;lyricsExpand.disabled=true;lyricsDialog?.close();lyricsState='loading';lyricsBody.textContent='';lyricsBody.closest('.sg-lyrics-card').hidden=true;lyricsBody.style.maxHeight='var(--sg-lyrics-preview-height)';lyricsBody.classList.remove('sg-expanded');lyricsExpand.setAttribute('aria-expanded','false');lyricsExpand.textContent='Развернуть';
       const controller=lyricsAbort;
@@ -339,20 +339,7 @@
       const url=new URL(raw,location.href);return url.origin===location.origin&&url.protocol===location.protocol?url.href:'';
     }catch{return '';}
   }
-  function nativeRouter() {
-    const direct=window.next?.router;
-    if(typeof direct?.push==='function')return direct;
-    // Compatibility fallback for builds that do not expose window.next.router.
-    for(const node of [nativeNav,nativeContent]){
-      if(!node)continue;
-      const key=Object.keys(node).find(k=>k.startsWith('__reactFiber$'));let fiber=key&&node[key];
-      for(let depth=0;fiber&&depth<100;depth++,fiber=fiber.return){
-        const value=fiber.memoizedProps?.value;
-        if(typeof value?.push==='function'&&typeof value?.replace==='function'&&typeof value?.prefetch==='function')return value;
-      }
-    }
-    return null;
-  }
+  function nativeRouter(){return null;}
   function follow(entry) {
     const href=entry?.href || (entry && safeHref(entry));if(!href)return;
     const url=new URL(href,location.href);if(url.origin!==location.origin)return;
@@ -363,7 +350,7 @@
       let a=entry?.node || entry;
       if(!a?.isConnected)a=Array.from(document.querySelectorAll('a[href]')).find(x=>!own(x)&&safeHref(x)===url.href);
       if(a?.isConnected)a.click();
-      else {window.pulsesyncApi?.showToast?.('Не удалось открыть плейлист. Открой его через «Моя медиатека».');return;}
+      else {bridge?.showToast?.('Не удалось открыть плейлист. Открой его через «Моя медиатека».');return;}
     }
     root.setAttribute('data-sg-native','false');scheduleChrome();
   }
@@ -379,47 +366,7 @@
     let cover='';try {const u=new URL(image?.currentSrc||image?.src||'',location.href);if(['https:','http:','blob:'].includes(u.protocol)&&image)cover=coverUrl(u.href,200)||u.href;}catch{}
     return {href,label,kind,cover,node:a};
   }
-  function nativeLibraryStore(){
-    const node=nativeNav||document.querySelector('main');if(!node)return null;
-    const key=Object.keys(node).find(k=>k.startsWith('__reactFiber$'));let fiber=key&&node[key];
-    for(let i=0;fiber&&i<100;i++,fiber=fiber.return){const v=fiber.memoizedProps?.value;if(v?.collection?.playlists&&v?.user?.account)return v;}
-    return null;
-  }
-  async function loadLibrary(){
-    if(dead||!options.enabled)return;
-    const wait=Math.max(startupAt+6000-Date.now(),trackChangedAt+1500-Date.now());
-    if(wait>0){if(!libraryStartTimer)libraryStartTimer=setTimeout(()=>{libraryStartTimer=null;loadLibrary();},wait);return;}
-    if(libraryLoading||libraryLoaded||dead||!options.enabled||Date.now()<libraryRetryAt)return;libraryRetryAt=Date.now()+60000;
-    const app=nativeLibraryStore();const uid=app?.user?.account?.data?.uid;if(!uid)return;
-    libraryLoading=true;
-    try{
-      const light=app.contextMenuAddTracksToPlaylist;
-      const created=typeof light?.loadPlaylistsWithoutTracks==='function'?{
-        getData:()=>light.loadPlaylistsWithoutTracks(),
-        get items(){return light.playlistsWithoutTracks;},
-        get isRejected(){return light.playlistsLoadingState?.loadingState==='reject';},
-        single:true
-      }:app.collection.playlists.playlistsCreated;
-      for(const model of [created,app.collection.playlists.playlistsLiked]){
-        if(typeof model?.getData!=='function')continue;
-        for(let page=0;page<100&&!dead&&options.enabled;page++){
-          await model.getData({userId:uid,page,pageSize:20,withTracks:false});
-          if(dead||!options.enabled)return;const items=Array.from(model.items||[]);let count=0;
-          for(const item of items){if(!item?.title)continue;count++;
-            const path=item.url||(item.uuid?'/playlists/'+encodeURIComponent(item.uuid):item.uid&&item.kind!==undefined?'/users/'+encodeURIComponent(item.uid)+'/playlists/'+encodeURIComponent(item.kind):'');
-            if(!path)continue;const url=new URL(path,location.href);if(url.origin!==location.origin)continue;
-            library.set(url.href,{href:url.href,label:String(item.title),kind:Number(item.kind)===3&&String(item.uid)===String(uid)?'liked':'playlist',cover:coverUrl(item.coverUri||item.cover?.uri,200)});
-          }
-          if(dead)return;libraryKey='';renderLibrary();renderShortcuts();
-          if(model.isRejected)throw new Error('Collection unavailable');
-          if(model.single||count<(page+1)*20)break;
-          await new Promise(resolve=>setTimeout(resolve,150));
-        }
-      }
-      libraryLoaded=true;
-    }catch{ /* Existing library entries remain available; retry manually. */ }
-    finally{libraryLoading=false;}
-  }
+  function loadLibrary() {} // Visible collection links are collected by refreshChrome.
   function renderLibrary() {
     if(!libraryList)return;
     const query=(librarySearch.value||'').toLocaleLowerCase();
@@ -527,10 +474,10 @@
       const b=button('Включить Мою волну',null,async()=>{
         if(b.disabled)return;b.disabled=true;
         try {
-          const api=window.pulsesyncApi;
+          const api=bridge;
           if(typeof api?.playVibe==='function')await api.playVibe({screen:'landing'});
           else {const native=findWave();if(native&&!native.disabled)native.click();else throw new Error('Vibe unavailable');}
-        } catch {window.pulsesyncApi?.showToast?.('Не удалось запустить Мою волну. Проверь обновление PulseSync.');}
+        } catch {bridge?.showToast?.('Не удалось запустить Мою волну. Проверь обновление PulseSync.');}
         finally {b.disabled=false;}
       },'sg-wave-launch');
       b.append(icon('play'),element('span','','Моя волна'));shortcuts.append(b);
@@ -588,8 +535,9 @@
   function onNativeClick(event){if(event.target?.closest?.('a[href]')&&!own(event.target))scheduleChrome();}
   window.addEventListener('popstate',scheduleChrome);document.addEventListener('click',onNativeClick,true);
 
-  window.__spotGlass={destroy};
+
   window.addEventListener('pagehide',destroy,{once:true});
   if(sourceScript?.parentNode){observer=new MutationObserver(()=>{if(!sourceScript.isConnected)destroy();});observer.observe(sourceScript.parentNode,{childList:true});}
   apply();tick();
-})();
+  return destroy;
+}
