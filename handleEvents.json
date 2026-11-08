@@ -1,0 +1,73 @@
+{
+  "sections": [
+    {
+      "title": "Интерфейс",
+      "items": [
+        {
+          "id": "enabled",
+          "name": "Оформление SpotGlass",
+          "description": "Главный переключатель оформления.",
+          "type": "button",
+          "bool": true,
+          "defaultParameter": true
+        },
+        {
+          "id": "wide",
+          "name": "Широкая библиотека",
+          "description": "Более широкая боковая библиотека в настольной раскладке.",
+          "type": "button",
+          "bool": true,
+          "defaultParameter": true
+        },
+        {
+          "id": "panel",
+          "name": "Сейчас играет",
+          "description": "Правая панель доступна от 1280 пикселей; в узком окне освобождает место для музыки.",
+          "type": "button",
+          "bool": true,
+          "defaultParameter": true
+        },
+        {
+          "id": "compact",
+          "name": "Компактные треки",
+          "description": "Уменьшить высоту строк треков до 48 пикселей.",
+          "type": "button",
+          "bool": false,
+          "defaultParameter": false
+        },
+        {
+          "id": "green",
+          "name": "Зелёный акцент",
+          "description": "Зелёные акценты. Выключите для нейтрального светлого акцента.",
+          "type": "button",
+          "bool": true,
+          "defaultParameter": true
+        },
+        {
+          "id": "waveTile",
+          "name": "Кнопка «Моя волна»",
+          "description": "Запуск Моей волны на странице рекомендаций без перехода на другую страницу.",
+          "type": "button",
+          "bool": true,
+          "defaultParameter": true
+        },
+        {
+          "id": "hideAds",
+          "name": "Скрывать рекламные баннеры",
+          "description": "Скрыть визуальные рекламные и промоблоки.",
+          "type": "button",
+          "bool": true,
+          "defaultParameter": true
+        },
+        {
+          "id": "lrclib",
+          "name": "Тексты из LRCLIB",
+          "description": "Запасной источник текстов. Название, исполнители, альбом и длительность трека отправляются на lrclib.net, если штатный текст недоступен.",
+          "type": "button",
+          "bool": true,
+          "defaultParameter": true
+        }
+      ]
+    }
+  ]
+}
