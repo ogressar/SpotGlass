@@ -1,0 +1,25 @@
+{
+  "id": "spotglass-ogressar",
+  "name": "SpotGlass",
+  "version": "1.0.1",
+  "author": "ogressar",
+  "type": "script",
+  "description": "Первый релиз SpotGlass — оформление Яндекс Музыки в стиле Spotify: адаптивные панели, медиатека с поиском, обновлённый плеер, синхронный текст песен и запуск Моей волны. Автор: ogressar.",
+  "css": "style.css",
+  "script": "script.js",
+  "image": "",
+  "banner": "",
+  "tags": [
+    "interface",
+    "dark",
+    "spotify-inspired"
+  ],
+  "dependencies": [],
+  "conflictsWith": [
+    "covertint-ilya-2026"
+  ],
+  "allowedUrls": [
+    "https://lrclib.net"
+  ],
+  "supportedVersions": []
+}
