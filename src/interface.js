@@ -407,18 +407,25 @@ export function startInterface(bridge) {
       const url=new URL(raw,location.href);return url.origin===location.origin&&url.protocol===location.protocol?url.href:'';
     }catch{return '';}
   }
-  function nativeRouter(){return null;}
+  function nativeRouter() {
+    // Next exposes its client router in the desktop app. Never reload its URL:
+    // the embedded host cannot serve arbitrary document routes.
+    try {const router=window.next?.router;return typeof router?.push==='function'?router:null;}catch{return null;}
+  }
   function follow(entry) {
     const href=entry?.href || (entry && safeHref(entry));if(!href)return;
-    const url=new URL(href,location.href);if(url.origin!==location.origin)return;
+    let url;try {url=new URL(href,location.href);}catch{return;}
+    if(url.origin!==location.origin||url.protocol!==location.protocol)return;
     if(url.href===location.href)return;
-    const router=nativeRouter();
-    if(router){router.push(url.pathname+url.search+url.hash,{scroll:true});}
+    const failed=()=>bridge?.showToast?.('Не удалось открыть плейлист внутри приложения. Открой его через поиск Яндекс Музыки.');
+    let a=entry?.node || entry;
+    if(!a?.isConnected)a=Array.from(document.querySelectorAll('a[href]')).find(x=>!own(x)&&safeHref(x)===url.href);
+    if(a?.isConnected&&typeof a.click==='function')a.click();
     else {
-      let a=entry?.node || entry;
-      if(!a?.isConnected)a=Array.from(document.querySelectorAll('a[href]')).find(x=>!own(x)&&safeHref(x)===url.href);
-      if(a?.isConnected)a.click();
-      else {location.assign(url.href);return;}
+      const router=nativeRouter();
+      if(!router){failed();return;}
+      try {Promise.resolve(router.push(url.pathname+url.search+url.hash,{scroll:true})).catch(failed);}
+      catch {failed();return;}
     }
     root.setAttribute('data-sg-native','false');scheduleChrome();
   }
