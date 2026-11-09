@@ -416,3 +416,20 @@ html[data-spotglass="on"][data-sg-hide-ads="true"] :is([class^="CommonLayout_con
 html[data-spotglass="on"] #spotglass-toolbar[data-sg-tinted]{background:linear-gradient(#0002,transparent),linear-gradient(var(--sg-page-tint),var(--sg-page-tint)),#222!important;border-bottom:0!important;box-shadow:none!important}
 html[data-spotglass="on"] #spotglass-toolbar[data-sg-tinted] .sg-global-search{background:#181818b3}
 html[data-spotglass="on"] #spotglass-toolbar[data-sg-tinted] .sg-toolbar-group .sg-icon-button{background:#18181880}
+
+html[data-spotglass="on"] #spotglass-sidebar .sg-library-row{display:flex;align-items:center;min-width:0}
+html[data-spotglass="on"] #spotglass-sidebar .sg-library-row .sg-library-item{flex:1;min-width:0;width:0}
+html[data-spotglass="on"] #spotglass-sidebar .sg-pin-button{flex:none;width:28px;height:32px;padding:6px;background:none;border:0;color:#aaa;cursor:pointer}
+html[data-spotglass="on"] #spotglass-sidebar .sg-pin-button[aria-pressed="true"]{color:#1ed760}
+html[data-spotglass="on"] #spotglass-sidebar .sg-pin-current{margin:4px 12px 12px;padding:9px;border:1px solid #555;border-radius:8px;background:#303030;color:#eee;cursor:pointer;font:600 12px "Segoe UI",sans-serif}
+html[data-spotglass="on"] #spotglass-sidebar .sg-pin-current[hidden]{display:none}
+#spotglass-panel .sg-full-queue{display:block;max-height:clamp(260px,45vh,640px);overflow:auto;overscroll-behavior:contain}
+#spotglass-panel .sg-queue-row{display:flex;align-items:center;gap:9px;padding:8px 3px;border-radius:7px}
+#spotglass-panel .sg-queue-row[aria-current="true"]{background:#ffffff0a}
+#spotglass-panel .sg-queue-row[aria-current="true"] strong,#spotglass-panel .sg-queue-current{color:#1ed760}
+#spotglass-panel .sg-queue-row .sg-next-cover{width:38px;height:38px}
+#spotglass-panel .sg-queue-row .sg-next-names{flex:1;min-width:0}
+#spotglass-panel .sg-queue-row .sg-next-names span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#spotglass-panel .sg-queue-duration{font-size:11px;font-variant-numeric:tabular-nums}
+#spotglass-panel .sg-queue-summary,#spotglass-panel .sg-queue-past summary{padding:8px 0;color:#aaa;font-size:12px}
+#spotglass-panel .sg-queue-past summary{cursor:pointer}

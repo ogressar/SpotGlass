@@ -19,7 +19,7 @@ export default defineAddon({
         host.onCleanup(host.player.onChange(value => {playerRevision++;snapshot=value;emitTrack()}))
         host.onCleanup(host.player.onQueueChange(value => {queueRevision++;queue=value;emitQueue()}))
         const revisions = [playerRevision, queueRevision]
-        const [initial, initialQueue] = await Promise.all([host.player.getSnapshot(), host.client.getQueueSnapshot()])
+        const [initial, initialQueue, login] = await Promise.all([host.player.getSnapshot(), host.client.getQueueSnapshot(), host.client.getUserLogin().catch(()=>null)])
         if(host.signal.aborted) return
         if(playerRevision===revisions[0]) snapshot=initial
         if(queueRevision===revisions[1]) queue=initialQueue
@@ -27,6 +27,7 @@ export default defineAddon({
         const report=(operation:Promise<unknown>)=>{void operation.catch(error=>{if(!host.signal.aborted)host.logger.warn('SpotGlass action failed',error)})}
         const bridge={
             getSettings:()=>host.settings,
+            storageScope:login || "local",
             getCurrentTrack:()=>snapshot?.track,
             getProgress:()=>snapshot?.progress,
             getQueueSnapshot:()=>queue,

@@ -91,7 +91,7 @@ export function startInterface(bridge) {
   function updateTrack() {
     if(!panel||!options.enabled||!options.panel||panelDismissed||window.innerWidth<1280) return;
     const track=bridge?.getCurrentTrack?.();
-    if(!track||typeof track!=='object'||typeof track.then==='function') return;
+    if(!track||typeof track!=='object'||typeof track.then==='function') {renderQueue();return;}
     const data={id:String(track.id??''),title:String(track.title||'Без названия'),artist:Array.isArray(track.artists)?track.artists.map(x=>String(x.name||'')).filter(Boolean).join(', '):'',album:String(track.albums?.[0]?.title||'Сингл'),cover:String(track.coverUri||'')};
     const key=JSON.stringify(data);
     if(key!==lastKey) {lastKey=key;title.textContent=data.title;artist.textContent=data.artist;album.textContent=data.album;}
@@ -139,8 +139,8 @@ export function startInterface(bridge) {
     lyricsExpand=button('Развернуть текст',null,openLyrics,'sg-card-link');lyricsExpand.textContent='Развернуть';lyricsExpand.disabled=true;head.append(lyricsExpand);
     lyricsBody=element('div','sg-lyrics-preview','Включи трек, чтобы увидеть текст.');
     lyrics.append(head,lyricsBody);panel.append(lyrics);
-    const queue=element('section','sg-next-card');const queueHead=element('div','sg-card-heading');const open=button('Показать очередь',null,()=>{const target=nativeActionButton('queue');if(target&&!target.disabled)target.click();},'sg-card-link');open.textContent='Очередь';queueHead.append(element('strong','','Далее в очереди'),open);
-    nextCard=element('div','sg-next-content','Включи музыку');queue.append(queueHead,nextCard);panel.append(queue);
+    const queue=element('section','sg-next-card');const queueHead=element('div','sg-card-heading');const open=button('Изменить очередь в плеере',null,()=>{const target=nativeActionButton('queue');if(target&&!target.disabled)target.click();else bridge.showToast('Кнопка очереди сейчас недоступна.');},'sg-card-link');open.textContent='Изменить';queueHead.append(element('strong','','Очередь воспроизведения'),open);
+    lastQueueSnapshot=null;nextCard=element('div','sg-next-content','Включи музыку');queue.append(queueHead,nextCard);panel.append(queue);
   }
   function openLyrics() {
     if(!lyricsText)return;
@@ -270,23 +270,33 @@ export function startInterface(bridge) {
       const lines=Array.from(document.querySelectorAll(component('SyncLyricsLine_root'))).map(el=>el.textContent.trim()).filter(Boolean);
       if(lines.length)showLyrics(lines.join('\n'));
     }
-    let items,index,next;
-    try{
-      if(typeof api?.getQueue==='function'&&typeof api?.getState==='function'){
-        items=api.getQueue();index=api.getState()?.queueState?.index?.value;
-        const entity=Array.isArray(items)&&Number.isInteger(index)&&index>=0?items[index+1]?.entity:null;
-        next=entity?.entityData?.meta??entity?.data?.meta;
-      }else if(typeof api?.getQueueSnapshot==='function'){
-        const q=api.getQueueSnapshot();items=q?.items;index=q?.currentIndex;
-        next=Array.isArray(items)&&Number.isInteger(index)&&index>=0?items[index+1]:null;
-      }
-    }catch{}
-    const data=next?{title:String(next.title||'Без названия'),artist:(next.artists||[]).map(x=>x.name||'').join(', '),cover:coverUrl(next.coverUri,200)}:null;
-    const key=JSON.stringify(data)||'';if(key===nextKey)return;nextKey=key;nextCard.replaceChildren();
-    if(!data){nextCard.textContent=Array.isArray(items)?'Следующий трек ещё не добавлен.':'Очередь недоступна в этой версии приложения.';return;}
-    if(data.cover){const img=element('img','sg-next-cover');img.alt='';img.src=data.cover;img.loading='lazy';nextCard.append(img);}
-    const names=element('div','sg-next-names');names.append(element('strong','',data.title),element('span','',data.artist));nextCard.append(names);
+    renderQueue();
   }
+  let queueLimit=50, lastQueueSnapshot=null, renderedQueueLimit=0;
+  function renderQueue() {
+    if(!nextCard)return;
+    const snapshot=bridge.getQueueSnapshot?.();const items=snapshot?.items||[];const current=snapshot?.currentIndex;
+    if(snapshot===lastQueueSnapshot&&queueLimit===renderedQueueLimit)return;
+    lastQueueSnapshot=snapshot;renderedQueueLimit=queueLimit;
+    const scroll=nextCard.scrollTop;nextCard.replaceChildren();nextCard.classList.add('sg-full-queue');
+    if(!items.length){nextCard.textContent='Очередь пуста. Включи трек или плейлист.';return;}
+    const start=Number.isInteger(current)&&current>=0?current:0;
+    const summary=element('div','sg-queue-summary',`Далее: ${Math.max(0,items.length-start-1)} треков`);nextCard.append(summary);
+    if(start>0){const past=element('details','sg-queue-past');past.append(element('summary','',`Уже прозвучало: ${start}`));past.addEventListener('toggle',()=>{if(past.open&&!past.dataset.loaded){past.dataset.loaded='true';for(let i=0;i<start;i++)past.append(queueRow(items[i],i,false));}},{once:false});nextCard.append(past);}
+    for(let i=start;i<Math.min(items.length,start+queueLimit);i++)nextCard.append(queueRow(items[i],i,i===current));
+    if(items.length>start+queueLimit){const more=button('Показать ещё 50 треков',null,()=>{queueLimit+=50;renderQueue();},'sg-card-link');more.textContent='Показать ещё';nextCard.append(more);}
+    nextCard.scrollTop=scroll;
+  }
+  function queueRow(track,index,current) {
+    const row=element('div','sg-queue-row');if(current)row.setAttribute('aria-current','true');
+    const cover=coverUrl(track.coverUri,100);if(cover){const img=element('img','sg-next-cover');img.src=cover;img.alt='';img.loading='lazy';row.append(img);}
+    const names=element('div','sg-next-names');names.append(element('strong','',String(track.title||'Без названия')),element('span','',(track.artists||[]).map(a=>a.name).join(', ')));
+    if(current)names.append(element('span','sg-queue-current','Сейчас играет'));
+    row.append(names);const seconds=Math.floor(Number(track.durationMs)/1000);
+    if(seconds>0)row.append(element('span','sg-queue-duration',Math.floor(seconds/60)+':'+String(seconds%60).padStart(2,'0')));
+    return row;
+  }
+
   let playerObserver, playerTarget;
   const glyphOriginal=new Map();
   function bindPlayerIcons() {
@@ -314,6 +324,37 @@ export function startInterface(bridge) {
   let waveLink, homeLink, searchLink, collectionLink, libraryList, librarySearch, selectedFilter='all';
   let libraryKey='', shortcutsKey='', waveExpanded=false, searchTimer, initialHomeDone=false;
   const library = new Map();
+  const pinsKey='spotglass:pins:v1:'+bridge.storageScope;
+  const pins=new Map();
+  try { for(const e of JSON.parse(localStorage.getItem(pinsKey)||'[]')) {
+    const u=new URL(e.href,location.href);
+    if(u.origin===location.origin&&/\/playlists?\//.test(u.pathname)&&typeof e.label==='string') {
+      const entry={href:u.href,label:e.label.slice(0,180),kind:'playlist',cover:typeof e.cover==='string'&&/^https?:/.test(e.cover)?e.cover:''};
+      pins.set(entry.href,entry); library.set(entry.href,entry);
+    }
+  }} catch {}
+  let pinCurrent;
+  function togglePin(entry) {
+    const next=new Map(pins);
+    if(next.has(entry.href))next.delete(entry.href);
+    else next.set(entry.href,{href:entry.href,label:entry.label,kind:entry.kind,cover:entry.cover});
+    try {localStorage.setItem(pinsKey,JSON.stringify([...next.values()]));}
+    catch {bridge.showToast('Не удалось сохранить закрепления.');return;}
+    pins.clear();for(const [key,value] of next)pins.set(key,value);
+    library.set(entry.href,entry);libraryKey='';renderLibrary();syncPinButton();
+  }
+  function currentPlaylist() {
+    if(!/\/playlists?\//.test(location.pathname))return null;
+    const header=nativeContent?.querySelector(component('PageHeaderPlaylist_root'))||nativeContent?.querySelector(component('PlaylistPageHeader_header'));
+    const label=header?.querySelector(component('PageHeaderTitle_title'))?.textContent?.trim();
+    if(!label)return null;
+    const img=header.querySelector('img');
+    return {href:location.origin+location.pathname,label,kind:'playlist',cover:img?.currentSrc||img?.src||''};
+  }
+  function syncPinButton() {
+    if(!pinCurrent)return; const entry=currentPlaylist();pinCurrent.hidden=!entry;
+    pinCurrent.textContent=entry&&pins.has(entry.href)?'Открепить этот плейлист':'Закрепить этот плейлист';
+  }
   const own = node => node?.nodeType===1 && (node.id?.startsWith('spotglass-') || node.closest?.('[data-sg-owned]'));
   const component = name => `[class^="${name}__"],[class*=" ${name}__"]`;
   const icons = {
@@ -323,6 +364,7 @@ export function startInterface(bridge) {
     library:'M4 3v18M9 3v18M14 3l6 18',
     back:'m15 5-7 7 7 7',forward:'m9 5 7 7-7 7',
     close:'m6 6 12 12M18 6 6 18',more:'M5 12h.01M12 12h.01M19 12h.01',
+    pin:'M9 3h6l-1 6 4 4v2h-5v6h-2v-6H6v-2l4-4Z',
     panel:'M3 3h18v18H3ZM14 3v18',heart:'M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1.1-1.1a5.5 5.5 0 0 0-7.8 7.8L12 21l8.8-8.6a5.5 5.5 0 0 0 0-7.8Z'
   };
   function icon(name) {
@@ -352,7 +394,7 @@ export function startInterface(bridge) {
       let a=entry?.node || entry;
       if(!a?.isConnected)a=Array.from(document.querySelectorAll('a[href]')).find(x=>!own(x)&&safeHref(x)===url.href);
       if(a?.isConnected)a.click();
-      else {bridge?.showToast?.('Не удалось открыть плейлист. Открой его через «Моя медиатека».');return;}
+      else {location.assign(url.href);return;}
     }
     root.setAttribute('data-sg-native','false');scheduleChrome();
   }
@@ -372,15 +414,18 @@ export function startInterface(bridge) {
   function renderLibrary() {
     if(!libraryList)return;
     const query=(librarySearch.value||'').toLocaleLowerCase();
-    const entries=Array.from(library.values()).filter(x=>(selectedFilter==='all'||x.kind===selectedFilter||(selectedFilter==='playlist'&&x.kind==='liked'))&&x.label.toLocaleLowerCase().includes(query));
-    const key=JSON.stringify([!!collectionLink,entries.map(({href,label,kind,cover})=>[href,label,kind,cover])]);
+    const entries=Array.from(library.values()).sort((a,b)=>Number(pins.has(b.href))-Number(pins.has(a.href))).filter(x=>(selectedFilter==='all'||x.kind===selectedFilter||(selectedFilter==='playlist'&&x.kind==='liked'))&&x.label.toLocaleLowerCase().includes(query));
+    const key=JSON.stringify([!!collectionLink,entries.map(({href,label,kind,cover})=>[href,label,kind,cover,pins.has(href)])]);
     if(key===libraryKey)return;libraryKey=key;libraryList.replaceChildren();
     for(const entry of entries){
       const item=button(entry.label,null,()=>follow(entry),'sg-library-item');
       const tile=element('span','sg-library-cover '+(entry.kind==='liked'?'sg-liked':''));
       if(entry.cover){const image=element('img','');image.src=entry.cover;image.alt='';image.loading='lazy';tile.append(image);}else tile.append(icon(entry.kind==='liked'?'heart':'library'));
       const text=element('span','sg-library-meta');text.append(element('span','sg-library-name',entry.label),element('span','sg-library-kind',({playlist:'Плейлист',liked:'Любимые треки',album:'Альбом',artist:'Исполнитель'})[entry.kind]));
-      item.append(tile,text);libraryList.append(item);
+      item.append(tile,text);
+      const row=element('div','sg-library-row');row.append(item);
+      if(entry.kind==='playlist') {const pinned=pins.has(entry.href);const pin=button(pinned?'Открепить '+entry.label:'Закрепить '+entry.label,'pin',()=>togglePin(entry),'sg-pin-button');pin.setAttribute('aria-pressed',String(pinned));row.append(pin);}
+      libraryList.append(row);
     }
     if(!entries.length){const empty=element('div','sg-library-empty',query?'Ничего не найдено':'Здесь появятся закреплённые плейлисты и музыка из открытой коллекции.');
       if(collectionLink){const open=button('Открыть коллекцию',null,()=>follow(collectionLink),'sg-open-library');open.textContent='Открыть коллекцию';empty.append(open);}libraryList.append(empty);}
@@ -416,6 +461,7 @@ export function startInterface(bridge) {
       const open=button('Моя медиатека','library',()=>follow(collectionLink),'sg-library-title');open.append(element('span','','Моя медиатека'));
       const menu=button('Оригинальное меню Яндекс Музыки','more',()=>{toggleNative();});
       head.append(open,menu);section.append(head);
+      pinCurrent=button('Закрепить этот плейлист',null,()=>{const entry=currentPlaylist();if(entry)togglePin(entry);},'sg-pin-current');pinCurrent.hidden=true;section.append(pinCurrent);
       const filters=element('div','sg-filters');
       for(const [label,value] of [['Все','all'],['Плейлисты','playlist'],['Альбомы','album'],['Исполнители','artist']]){
         const b=button(label,null,()=>{selectedFilter=value;for(const x of filters.children)x.setAttribute('aria-pressed',String(x===b));libraryKey='';renderLibrary();},'sg-filter');b.textContent=label;b.setAttribute('aria-pressed',String(value==='all'));filters.append(b);
@@ -454,7 +500,7 @@ export function startInterface(bridge) {
     for(const [name,link] of [['home',homeLink],['search',searchLink]]){const b=sidebar.querySelector(`[data-sg-nav="${name}"]`);if(b){b.disabled=!link;b.setAttribute('aria-current',link&&new URL(safeHref(link)).pathname===location.pathname?'page':'false');}}
     loadLibrary();const libraryButton=sidebar.querySelector('.sg-library-title');if(libraryButton)libraryButton.disabled=!collectionLink;
     const searchInput=toolbar?.querySelector('.sg-global-search input');if(searchInput)searchInput.disabled=!searchLink;
-    syncSearch();renderLibrary();renderShortcuts();alignPanel();
+    syncSearch();syncPinButton();renderLibrary();renderShortcuts();alignPanel();
   }
   function renderShortcuts() {
     const landing=nativeContent?.querySelector(component('LandingPage_root'));
