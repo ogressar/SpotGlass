@@ -345,12 +345,36 @@ export function startInterface(bridge) {
   }
   function currentPlaylist() {
     if(!/\/playlists?\//.test(location.pathname))return null;
-    const header=nativeContent?.querySelector(component('PageHeaderPlaylist_root'))||nativeContent?.querySelector(component('PlaylistPageHeader_header'));
-    const label=header?.querySelector(component('PageHeaderTitle_title'))?.textContent?.trim();
+    // PageHeaderPlaylist_root is the controls block, not the whole page header.
+    const header=nativeContent?.querySelector(component('PlaylistPageHeader_header'))||nativeContent;
+    const titleNode=header?.querySelector(component('PageHeaderTitle_title'))||header?.querySelector('h1');
+    const label=(titleNode?.textContent||'').trim();
     if(!label)return null;
     const img=header.querySelector('img');
     return {href:location.origin+location.pathname,label,kind:'playlist',cover:img?.currentSrc||img?.src||''};
   }
+  function mountPinForm(section) {
+    const add=button('Добавить плейлист по ссылке',null,()=>{form.hidden=!form.hidden;add.setAttribute('aria-expanded',String(!form.hidden));if(!form.hidden)url.focus();},'sg-pin-current');
+    add.textContent='+ Добавить плейлист';add.setAttribute('aria-expanded','false');
+    const form=element('form','sg-pin-form');form.hidden=true;
+    const url=element('input','');url.type='url';url.required=true;url.placeholder='Ссылка на плейлист';url.setAttribute('aria-label','Ссылка на плейлист');
+    const name=element('input','');name.required=true;name.maxLength=180;name.placeholder='Название плейлиста';name.setAttribute('aria-label','Название плейлиста');
+    const error=element('div','sg-pin-error');error.setAttribute('role','alert');
+    const save=button('Закрепить плейлист',null,()=>{},'sg-card-link');save.textContent='Закрепить';save.type='submit';
+    form.append(url,name,save,error);form.addEventListener('submit',event=>{
+      event.preventDefault();error.textContent='';
+      let u;try{u=new URL(url.value.trim());}catch{error.textContent='Вставь полную ссылку на плейлист.';return;}
+      if(!/^https?:$/.test(u.protocol)||!/(^|\.)music\.yandex\.(ru|com|kz|by|uz)$/.test(u.hostname)||!/^\/(?:playlists?\/[^/]+|users\/[^/]+\/playlists\/[^/]+)\/?$/.test(u.pathname)){
+        error.textContent='Нужна ссылка на плейлист Яндекс Музыки.';return;
+      }
+      const entry={href:location.origin+u.pathname.replace(/\/$/,''),label:name.value.trim(),kind:'playlist',cover:''};
+      if(!entry.label){error.textContent='Укажи название плейлиста.';return;}
+      if(pins.has(entry.href)){error.textContent='Этот плейлист уже закреплён.';return;}
+      togglePin(entry);
+      if(pins.has(entry.href)){form.reset();form.hidden=true;add.setAttribute('aria-expanded','false');}
+    });section.append(add,form);
+  }
+
   function syncPinButton() {
     if(!pinCurrent)return; const entry=currentPlaylist();pinCurrent.hidden=!entry;
     pinCurrent.textContent=entry&&pins.has(entry.href)?'Открепить этот плейлист':'Закрепить этот плейлист';
@@ -461,7 +485,7 @@ export function startInterface(bridge) {
       const open=button('Моя медиатека','library',()=>follow(collectionLink),'sg-library-title');open.append(element('span','','Моя медиатека'));
       const menu=button('Оригинальное меню Яндекс Музыки','more',()=>{toggleNative();});
       head.append(open,menu);section.append(head);
-      pinCurrent=button('Закрепить этот плейлист',null,()=>{const entry=currentPlaylist();if(entry)togglePin(entry);},'sg-pin-current');pinCurrent.hidden=true;section.append(pinCurrent);
+      pinCurrent=button('Закрепить этот плейлист',null,()=>{const entry=currentPlaylist();if(entry)togglePin(entry);},'sg-pin-current');pinCurrent.hidden=true;section.append(pinCurrent);mountPinForm(section);
       const filters=element('div','sg-filters');
       for(const [label,value] of [['Все','all'],['Плейлисты','playlist'],['Альбомы','album'],['Исполнители','artist']]){
         const b=button(label,null,()=>{selectedFilter=value;for(const x of filters.children)x.setAttribute('aria-pressed',String(x===b));libraryKey='';renderLibrary();},'sg-filter');b.textContent=label;b.setAttribute('aria-pressed',String(value==='all'));filters.append(b);
