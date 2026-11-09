@@ -1,9 +1,9 @@
 export default {
   "id": "spotglass-ogressar",
   "name": "SpotGlass",
-  "version": "1.1.0-beta.5",
+  "version": "1.0.0",
   "author": "ogressar",
-  "description": "Первый релиз SpotGlass — оформление Яндекс Музыки в стиле Spotify: адаптивные панели, медиатека с поиском, обновлённый плеер, синхронный текст песен и запуск Моей волны. Автор: ogressar.",
+  "description": "Оформление Яндекс Музыки в стиле Spotify: адаптивные панели, закреплённые плейлисты, очередь воспроизведения, синхронные тексты и LRCLIB. На основе официального шаблона WebHost.",
   "image": "",
   "banner": "",
   "tags": [

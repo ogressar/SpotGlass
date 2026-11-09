@@ -1,16 +1,14 @@
 import { createToolbarTint } from './toolbar-tint.js';
-/* SpotGlass 1.0.1 — ogressar. Spotify-inspired styling for Yandex Music. */
+/* SpotGlass 1.0.0 — ogressar. Spotify-inspired styling for Yandex Music. */
 export function startInterface(bridge) {
   'use strict';
 
   const root = document.documentElement;
   const toolbarTint = createToolbarTint();
-  const sourceScript = null;
   const defaults = { enabled:true, wide:true, panel:true, compact:false, green:true, waveTile:true, hideAds:true, lrclib:true };
-  let options = { ...defaults }, store, unsubscribe, timer, observer;
-  const startupAt=Date.now();let libraryStartTimer,trackChangedAt=0;
+  let options = { ...defaults }, store, unsubscribe, timer;
   let trackUpdatePending=false;
-  let trackOff, queueOff, syncTimer, cues=[], activeCue=-2, libraryLoading=false, libraryLoaded=false, libraryRetryAt=0;
+  let trackOff, queueOff, syncTimer, cues=[], activeCue=-2;
   let dead = false, lastKey = '', panel, title, artist, album, art;
   let panelDismissed = false, attempts = 0, styleSeen = false, coverNode, lastCover = null;
   const ownedAttributes = ['data-spotglass','data-sg-wide','data-sg-panel','data-sg-compact','data-sg-native','data-sg-chrome','data-sg-wave-card','data-sg-search-ready','data-sg-hide-ads'];
@@ -48,7 +46,7 @@ export function startInterface(bridge) {
     root.style.setProperty('--sg-accent',options.green?'#1ed760':'#eeeeee');
     if(options.enabled&&options.panel) mount();
     if(options.enabled) {scheduleChrome();resumeLyrics();}
-    else { lyricsDialog?.close();lyricsAbort?.abort();lyricsTrack='';navObserver?.disconnect();contentObserver?.disconnect();nativeNav=null;nativeContent=null; }
+    else { toolbarTint.destroy();lyricsDialog?.close();lyricsAbort?.abort();lyricsTrack='';navObserver?.disconnect();contentObserver?.disconnect();nativeNav=null;nativeContent=null; }
   }
   function receiveSettings(raw={}) {
     const next={};
@@ -113,7 +111,7 @@ export function startInterface(bridge) {
     timer=setTimeout(tick,document.hidden?10000:2000);
   }
   function destroy() {
-    if(dead)return;dead=true;clearTimeout(timer);clearTimeout(libraryStartTimer);clearTimeout(syncTimer);trackOff?.();queueOff?.();observer?.disconnect();
+    if(dead)return;dead=true;clearTimeout(timer);clearTimeout(syncTimer);trackOff?.();queueOff?.();
     try{if(typeof unsubscribe==='function')unsubscribe();}catch{}
     lyricsAbort?.abort();lyricsDialog?.remove();panel?.remove();teardownChrome();playerObserver?.disconnect();for(const [node,value] of glyphOriginal){if(value===null)node.removeAttribute("data-sg-glyph");else node.setAttribute("data-sg-glyph",value);}
     for(const [name,value] of previousAttributes){if(value===null)root.removeAttribute(name);else root.setAttribute(name,value);}
@@ -122,17 +120,12 @@ export function startInterface(bridge) {
     window.removeEventListener('pagehide',destroy);
 
   }
-  let lyricsBody, lyricsExpand, lyricsDialog, lyricsAbort, lyricsTrack='', lyricsText='', lyricsState='', nativeLyricsRequested='', nextCard, nextKey='', sidePlay, sidePrev, sideNext;
+  let lyricsBody, lyricsExpand, lyricsDialog, lyricsAbort, lyricsTrack='', lyricsText='', lyricsState='', nativeLyricsRequested='', nextCard;
   function nativeActionButton(kind) {
     const footer=document.querySelector(component('CommonLayout_compositePlayerBar'));
     if(!footer)return null;
     if(kind==='play')return footer.querySelector('button[data-sg-glyph="play"],button[data-sg-glyph="pause"]');
     return footer.querySelector('button[data-sg-glyph="'+kind+'"]');
-  }
-  function playerAction(kind) {
-    const api=bridge;const method=({play:'togglePlayPause',next:'next',previous:'previous'})[kind];
-    if(method&&typeof api?.[method]==='function'){try{Promise.resolve(api[method]()).catch(()=>{});}catch{}return;}
-    const native=nativeActionButton(kind);if(native&&!native.disabled)native.click();
   }
   function mountExtras() {
     const lyrics=element('section','sg-lyrics-card');lyrics.hidden=true;const head=element('div','sg-card-heading');head.append(element('strong','','Предпросмотр текста'));
@@ -232,7 +225,7 @@ export function startInterface(bridge) {
     const controller=new AbortController();const abort=()=>controller.abort();signal.addEventListener('abort',abort,{once:true});
     const timeout=setTimeout(abort,8000);lrclibAfter=Date.now()+300;
     try{
-      const response=await bridge.fetch('https://lrclib.net/api/get?'+key,{signal:controller.signal,credentials:'omit',headers:{'Lrclib-Client':'SpotGlass/1.0.1 (ogressar)'}});
+      const response=await bridge.fetch('https://lrclib.net/api/get?'+key,{signal:controller.signal,credentials:'omit',headers:{'Lrclib-Client':'SpotGlass/1.0.0 (ogressar)'}});
       if(response.status===429||response.status===503){const retry=response.headers.get('Retry-After');const seconds=Number(retry);lrclibAfter=Math.max(Date.now()+60000,Number.isFinite(seconds)?Date.now()+seconds*1000:Date.parse(retry)||0);return null;}
       if(!response.ok&&response.status!==404)throw new Error('Lyrics request failed');
       const data=response.ok?await response.json():null;
@@ -256,7 +249,7 @@ export function startInterface(bridge) {
   function updateExtras(track) {
     const api=bridge;const id=String(track.id??'');
     lyricsColor(track);
-    if(id!==lyricsTrack){trackChangedAt=Date.now();lyricsTrack=id;nativeLyricsRequested='';lyricsAbort?.abort();lyricsAbort=new AbortController();lyricsText='';cues=[];activeCue=-2;lyricsExpand.disabled=true;lyricsDialog?.close();lyricsState='loading';lyricsBody.textContent='';lyricsBody.closest('.sg-lyrics-card').hidden=true;lyricsBody.style.maxHeight='var(--sg-lyrics-preview-height)';lyricsBody.classList.remove('sg-expanded');lyricsExpand.setAttribute('aria-expanded','false');lyricsExpand.textContent='Развернуть';
+    if(id!==lyricsTrack){lyricsTrack=id;nativeLyricsRequested='';lyricsAbort?.abort();lyricsAbort=new AbortController();lyricsText='';cues=[];activeCue=-2;lyricsExpand.disabled=true;lyricsDialog?.close();lyricsState='loading';lyricsBody.textContent='';lyricsBody.closest('.sg-lyrics-card').hidden=true;lyricsBody.style.maxHeight='var(--sg-lyrics-preview-height)';lyricsBody.classList.remove('sg-expanded');lyricsExpand.setAttribute('aria-expanded','false');lyricsExpand.textContent='Развернуть';
       const controller=lyricsAbort;
       loadTrackLyrics(track,id,controller.signal).then(result=>{
         if(dead||controller.signal.aborted||lyricsTrack!==id)return;
@@ -441,7 +434,6 @@ export function startInterface(bridge) {
     let cover='';try {const u=new URL(image?.currentSrc||image?.src||'',location.href);if(['https:','http:','blob:'].includes(u.protocol)&&image)cover=coverUrl(u.href,200)||u.href;}catch{}
     return {href,label,kind,cover,node:a};
   }
-  function loadLibrary() {} // Visible collection links are collected by refreshChrome.
   function renderLibrary() {
     if(!libraryList)return;
     const query=(librarySearch.value||'').toLocaleLowerCase();
@@ -529,7 +521,7 @@ export function startInterface(bridge) {
     if(/\/collection(?:\/|$)/.test(location.pathname)&&nativeContent){for(const a of Array.from(nativeContent.querySelectorAll('a[href]')).slice(0,300)){if(own(a))continue;const entry=libraryEntry(a);if(entry)library.set(entry.href,entry);}}
     while(library.size>5000)library.delete(library.keys().next().value);
     for(const [name,link] of [['home',homeLink],['search',searchLink]]){const b=sidebar.querySelector(`[data-sg-nav="${name}"]`);if(b){b.disabled=!link;b.setAttribute('aria-current',link&&new URL(safeHref(link)).pathname===location.pathname?'page':'false');}}
-    loadLibrary();const libraryButton=sidebar.querySelector('.sg-library-title');if(libraryButton)libraryButton.disabled=!collectionLink;
+    const libraryButton=sidebar.querySelector('.sg-library-title');if(libraryButton)libraryButton.disabled=!collectionLink;
     const searchInput=toolbar?.querySelector('.sg-global-search input');if(searchInput)searchInput.disabled=!searchLink;
     syncSearch();syncPinButton();renderLibrary();renderShortcuts();alignPanel();
   }
@@ -617,7 +609,6 @@ export function startInterface(bridge) {
 
 
   window.addEventListener('pagehide',destroy,{once:true});
-  if(sourceScript?.parentNode){observer=new MutationObserver(()=>{if(!sourceScript.isConnected)destroy();});observer.observe(sourceScript.parentNode,{childList:true});}
   apply();tick();
   return destroy;
 }

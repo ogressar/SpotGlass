@@ -19,7 +19,7 @@ export default defineAddon({
         host.onCleanup(host.player.onChange(value => {playerRevision++;snapshot=value;emitTrack()}))
         host.onCleanup(host.player.onQueueChange(value => {queueRevision++;queue=value;emitQueue()}))
         const revisions = [playerRevision, queueRevision]
-        const [initial, initialQueue, login] = await Promise.all([host.player.getSnapshot(), host.client.getQueueSnapshot(), host.client.getUserLogin().catch(()=>null)])
+        const [initial, initialQueue, login] = await Promise.all([host.player.getSnapshot().catch(error=>{host.logger.warn('Initial player snapshot unavailable',error);return null}), host.client.getQueueSnapshot().catch(error=>{host.logger.warn('Initial queue snapshot unavailable',error);return {items:[],currentIndex:null} as QueueSnapshot}), host.client.getUserLogin().catch(()=>null)])
         if(host.signal.aborted) return
         if(playerRevision===revisions[0]) snapshot=initial
         if(queueRevision===revisions[1]) queue=initialQueue
