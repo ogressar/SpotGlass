@@ -411,3 +411,8 @@ html[data-spotglass="on"] :is([class^="CommonLayout_content__"],[class*=" Common
 html[data-spotglass="on"][data-sg-hide-ads="true"] :is([class^="CommonLayout_content__"],[class*=" CommonLayout_content__"]) :is(:is([class^="Promotions_root__"],[class*=" Promotions_root__"]),:is([class^="PromotionsCard_root__"],[class*=" PromotionsCard_root__"]),:is([class^="TopAdvertBanner_root__"],[class*=" TopAdvertBanner_root__"])){display:none!important}
 
 #spotglass-panel .sg-lyrics-source{font-size:11px;opacity:.65;margin-top:12px}
+
+/* The bottom edge exactly matches the native header gradient's first stop. */
+html[data-spotglass="on"] #spotglass-toolbar[data-sg-tinted]{background:linear-gradient(#0002,transparent),linear-gradient(var(--sg-page-tint),var(--sg-page-tint)),#222!important;border-bottom:0!important;box-shadow:none!important}
+html[data-spotglass="on"] #spotglass-toolbar[data-sg-tinted] .sg-global-search{background:#181818b3}
+html[data-spotglass="on"] #spotglass-toolbar[data-sg-tinted] .sg-toolbar-group .sg-icon-button{background:#18181880}

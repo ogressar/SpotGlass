@@ -1,4 +1,4 @@
-# SpotGlass 1.1.0-beta.1 — WebHost
+# SpotGlass 1.1.0-beta.2 — WebHost
 
 Автор: ogressar. Тестовый перенос на официальный PulseSync-ExampleAddon и addon-sdk 0.18.0.
 
@@ -13,3 +13,6 @@
 Основа: https://github.com/PulseSync-LLC/PulseSync-ExampleAddon
 
 `npm ci` затем `npm run build`. Результат в `dist/SpotGlass`. Лицензия шаблона сохранена в LICENSE и LICENSE.ru.md.
+
+### beta.2
+Цвет существующей шапки плейлиста, альбома или исполнителя продолжается за верхней панелью поиска. На страницах без собственного цвета сохраняется обычный фон. Обновление выполняется по изменениям страницы, без отдельного таймера.

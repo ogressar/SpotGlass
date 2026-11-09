@@ -1,8 +1,10 @@
+import { createToolbarTint } from './toolbar-tint.js';
 /* SpotGlass 1.0.1 — ogressar. Spotify-inspired styling for Yandex Music. */
 export function startInterface(bridge) {
   'use strict';
 
   const root = document.documentElement;
+  const toolbarTint = createToolbarTint();
   const sourceScript = null;
   const defaults = { enabled:true, wide:true, panel:true, compact:false, green:true, waveTile:true, hideAds:true, lrclib:true };
   let options = { ...defaults }, store, unsubscribe, timer, observer;
@@ -438,7 +440,7 @@ export function startInterface(bridge) {
   }
   function refreshChrome() {
     updateScale();
-    mountChrome();if(!nativeNav)return;
+    mountChrome();toolbarTint.sync(nativeContent,toolbar);if(!nativeNav)return;
     const nativeLinks=Array.from(nativeNav.querySelectorAll('a[href]')).filter(a=>!own(a)&&safeHref(a));
     waveLink=nativeLinks.find(a=>/^(Главная|Home|Моя волна)$/i.test((a.textContent||a.getAttribute('aria-label')||'').trim()))||nativeLinks.find(a=>{try{return new URL(safeHref(a)).pathname==='/';}catch{return false;}});
     homeLink=nativeLinks.find(a=>/Для вас|For you|Тренды/i.test(a.textContent||a.getAttribute('aria-label')||''))||waveLink;
@@ -529,6 +531,7 @@ export function startInterface(bridge) {
   document.addEventListener('visibilitychange',resumeLyrics);
   window.addEventListener('resize',resumeLyrics);
   function teardownChrome() {
+    toolbarTint.destroy();
     window.removeEventListener('resize',scheduleChrome);document.removeEventListener('visibilitychange',resumeLyrics);window.removeEventListener('resize',resumeLyrics);clearTimeout(searchTimer);cancelAnimationFrame(refreshTimer);layoutObserver.disconnect();navObserver?.disconnect();contentObserver?.disconnect();sidebar?.remove();toolbar?.remove();shortcuts?.remove();
     window.removeEventListener('popstate',scheduleChrome);document.removeEventListener('click',onNativeClick,true);
   }
